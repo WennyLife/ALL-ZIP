@@ -15,7 +15,7 @@
 
 **Arraste seus ZIPs e o ALL ZIP descompacta ou compacta na hora. Cole links do Google Drive e ele baixa arquivos e pastas inteiras, com progresso real, pausa e retomada!**
 
-[Download macOS (.dmg)](https://github.com/WennyLife/ALL-ZIP/raw/main/release/ALL-ZIP-1.1.6.dmg) • [Download (.zip)](https://github.com/WennyLife/ALL-ZIP/raw/main/release/ALL-ZIP-1.1.6.zip)
+[Download macOS (.dmg)](https://github.com/WennyLife/ALL-ZIP/releases/download/v1.1.6/ALL-ZIP-1.1.6.dmg) • [Download (.zip)](https://github.com/WennyLife/ALL-ZIP/releases/download/v1.1.6/ALL-ZIP-1.1.6.zip)
 
 </div>
 
@@ -56,7 +56,7 @@ flowchart LR
 
 ## 📥 Instalação
 
-1. Baixe **[`ALL-ZIP-1.1.6.dmg`](https://github.com/WennyLife/ALL-ZIP/raw/main/release/ALL-ZIP-1.1.6.dmg)**.
+1. Baixe **[`ALL-ZIP-1.1.6.dmg`](https://github.com/WennyLife/ALL-ZIP/releases/download/v1.1.6/ALL-ZIP-1.1.6.dmg)**.
 2. Abra o `.dmg` e arraste o **ALL ZIP** para **Aplicativos**.
 3. Na primeira vez, o macOS pode pedir confirmação por o app ter assinatura *ad hoc* (não notarizada): clique com o botão direito no app e escolha **Abrir**.
 
@@ -79,7 +79,7 @@ python3 build.py
 O `build.py` gera o `ALL ZIP.app` em uma pasta temporária (o caminho aparece em `build-location.txt`).
 
 > [!NOTE]
-> O `GoogleOAuthClient.json` (credencial do login Google) **não está** no código-fonte. Para o download do Drive funcionar no seu build, crie uma credencial *OAuth Desktop* no Google Cloud, copie `src/GoogleOAuthClient.json.exemplo` para `src/GoogleOAuthClient.json` e preencha com os seus dados antes de rodar o `build.py`. Os instaladores da pasta `release/` já vêm prontos para usar.
+> O `GoogleOAuthClient.json` (credencial do login Google) **não está** no código-fonte. Para o download do Drive funcionar no seu build, crie uma credencial *OAuth Desktop* no Google Cloud, copie `src/GoogleOAuthClient.json.exemplo` para `src/GoogleOAuthClient.json` e preencha com os seus dados antes de rodar o `build.py`. Os instaladores publicados incluem o cliente OAuth Desktop do ALL ZIP; isso não libera o Drive para qualquer conta. Enquanto o projeto estiver em modo de teste, apenas as contas cadastradas conseguem conectar. A configuração Desktop não contém tokens de acesso nem de atualização de usuários.
 
 ## ✅ Testes
 
@@ -90,7 +90,7 @@ Há testes de motor ZIP, compactação, extração múltipla, rede/Drive, agrupa
 ## 💻 Requisitos de Sistema
 
 * **macOS:** 26.0 (Tahoe) ou superior.
-* **Processador:** Apple Silicon (M1, M2, M3, M4). Os binários atuais são `arm64`; não há versão Intel.
+* **Processador:** Apple Silicon (M1 ou mais novo). Os binários atuais são `arm64`; não há versão Intel.
 * **Internet e conta Google:** só para a aba **Baixar do Drive**. Compactar e descompactar ZIP funciona offline.
 * **Permissões:** nenhuma permissão especial de acessibilidade ou extensão de kernel.
 
