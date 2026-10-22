@@ -1,0 +1,10 @@
+.DS_Store
+*.swp
+*~
+build/
+.build/
+DerivedData/
+*.app
+!release/*.dmg
+!release/*.zip
+src/GoogleOAuthClient.json

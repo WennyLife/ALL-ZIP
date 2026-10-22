@@ -1,0 +1,60 @@
+ALL ZIP 1.1.5
+
+ARQUIVOS ZIP
+Cadeado aberto = descompactar. Cadeado fechado = compactar em ZIP rápido.
+Arrastar arquivos para a janela inicia a operação no modo escolhido.
+Selecionar arquivos permite revisar o nome/destino e iniciar pelo botão principal.
+A compactação usa DEFLATE nível 1, priorizando velocidade sobre a menor dimensão final.
+As barras mostram porcentagem e bytes processados. Enquanto o total não é conhecido,
+o app mostra Preparando sem inventar porcentagem. A velocidade mede bytes processados
+por segundo; o cache do sistema pode influenciar o valor.
+Ao extrair, uma única pasta externa redundante é removida. Subpastas internas continuam.
+Arquivos e pastas existentes nunca são substituídos automaticamente. Originais preservados.
+Links, caminhos perigosos e tipos especiais são bloqueados na extração e compactação.
+A operação usa streaming com blocos de 1 MiB e temporários no volume de destino.
+
+DRIVE
+A aba Baixar do Drive aceita links de arquivos ou pastas, um por linha.
+A fila processa um link de cada vez, com até quatro arquivos em paralelo dentro da pasta.
+Arquivos são gravados diretamente no destino, sem criar ZIP intermediário.
+Pausar e retomar funcionam enquanto o aplicativo está aberto. Em falhas transitórias,
+o app tenta até três vezes e retoma a partir do arquivo parcial usando HTTP Range.
+Se o servidor ignorar Range, o item é reiniciado sem concatenar bytes repetidos.
+Quando o Drive fornece MD5, o conteúdo é conferido antes de publicar a pasta final.
+Arquivos nativos Docs, Sheets, Slides e Drawings são exportados em DOCX, XLSX, PPTX e PNG,
+respeitando limites do Google. Outros formatos nativos sem suporte interrompem a operação.
+Pastas vazias, subpastas e nomes repetidos são preservados. Atalhos circulares são bloqueados.
+O total/porcentagem só aparece quando conhecido; exportações podem ter tamanho inicialmente desconhecido.
+
+CONEXÃO GOOGLE: PENDENTE NESTA INSTALAÇÃO
+O código de conexão oficial, PKCE, Chaves do macOS e importação de cliente Desktop está incluído.
+O Google Cloud ainda precisa do aceite dos termos e MFA pelo titular, criação/configuração do
+projeto, Drive API e cliente OAuth. Nenhuma credencial foi criada e nenhum download privado
+real foi concluído nesta atualização. Veja ALL-ZIP-Configurar-Google.txt para continuar.
+A autorização do Chrome não é reaproveitada. Não copiamos cookies, senhas nem tokens de outros apps.
+No pacote para usuários finais, o cliente OAuth do desenvolvedor pode ser incluído no build;
+cada usuário só conecta e autoriza a própria conta. Distribuição pública depende da validação Google.
+
+VALIDAÇÃO E LIMITAÇÕES
+Motor de extração: regressão de integridade e segurança aprovada.
+Compactação: oito casos aprovados, incluindo UTF-8, CRC, subpastas e proteção contra sobrescrita.
+Rede: onze casos aprovados em ambiente controlado, incluindo Range, pausa e cancelamento paralelo.
+Interface: cadeado, compactação, extração, 100%, aba Drive e orientação sem credencial verificados.
+Não existe benchmark comparativo com Keka/Apple nem garantia de velocidade máxima em qualquer rede/disco.
+macOS 26+, Apple Silicon. Assinatura local ad hoc, sem notarização.
+ZIP com senha, volumes divididos, outros formatos e codificações não UTF-8 não têm suporte garantido.
+A extração não restaura links, ACLs, atributos estendidos nem permissões executáveis.
+A fila não é persistida após sair do aplicativo. Encerramento forçado pode deixar temporários ocultos
+.ALLZIP-download-…, .ALLZIP-compress-… ou .JuntaZIP-…; eles não são apagados automaticamente ao reabrir.
+
+BOTÃO DIREITO DO FINDER
+Serviços > Extrair juntos com ALL ZIP. Essa ação seleciona o modo de descompactação.
+Também é possível usar Abrir com > ALL ZIP para selecionar arquivos.
+
+CÓDIGO
+Main.swift, Views.swift, Compression.swift, Publication.swift: janela e coordenação.
+Engine.c e Compress.c: motor nativo libarchive fornecido pelo macOS, compilado com -O3.
+GoogleAuth.swift: OAuth do aplicativo e tokens no Chaves do macOS.
+Drive.swift e DownloadTransfer.swift: estrutura Drive, fila e streaming de rede.
+GoogleOAuthClient.json é opcional no build e deve conter apenas o cliente Desktop do desenvolvedor.
+Não inclua tokens de contas no código, nos instaladores nem no acervo.
