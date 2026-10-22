@@ -84,3 +84,24 @@ O `build.py` gera o `ALL ZIP.app` em uma pasta temporária (o caminho aparece em
 ## ✅ Testes
 
 Há testes de motor ZIP, compactação, extração múltipla, rede/Drive, agrupamento e publicação em `src/test_*`.
+
+---
+
+## 💻 Requisitos de Sistema
+
+* **macOS:** 26.0 (Tahoe) ou superior.
+* **Processador:** Apple Silicon (M1, M2, M3, M4). Os binários atuais são `arm64`; não há versão Intel.
+* **Internet e conta Google:** só para a aba **Baixar do Drive**. Compactar e descompactar ZIP funciona offline.
+* **Permissões:** nenhuma permissão especial de acessibilidade ou extensão de kernel.
+
+---
+
+## 📄 Licença
+
+Este projeto é distribuído sob os termos da licença **MIT**. Consulte o arquivo [LICENSE](LICENSE) para mais detalhes.
+
+---
+
+<div align="center">
+Desenvolvido com carinho por <a href="https://github.com/WennyLife"><strong>WennyLife</strong></a>
+</div>
