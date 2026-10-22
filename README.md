@@ -15,7 +15,7 @@
 
 **Arraste seus ZIPs e o ALL ZIP descompacta ou compacta na hora. Cole links do Google Drive e ele baixa arquivos e pastas inteiras, com progresso real, pausa e retomada!**
 
-[Download macOS (.dmg)](https://github.com/WennyLife/ALL-ZIP/releases/download/v1.1.6/ALL-ZIP-1.1.6.dmg) • [Download (.zip)](https://github.com/WennyLife/ALL-ZIP/releases/download/v1.1.6/ALL-ZIP-1.1.6.zip)
+[Download macOS (.dmg)](https://github.com/WennyLife/ALL-ZIP/raw/refs/tags/v1.1.6/release/ALL-ZIP-1.1.6.dmg) • [Download (.zip)](https://github.com/WennyLife/ALL-ZIP/raw/refs/tags/v1.1.6/release/ALL-ZIP-1.1.6.zip)
 
 </div>
 
@@ -56,7 +56,7 @@ flowchart LR
 
 ## 📥 Instalação
 
-1. Baixe **[`ALL-ZIP-1.1.6.dmg`](https://github.com/WennyLife/ALL-ZIP/releases/download/v1.1.6/ALL-ZIP-1.1.6.dmg)**.
+1. Baixe **[`ALL-ZIP-1.1.6.dmg`](https://github.com/WennyLife/ALL-ZIP/raw/refs/tags/v1.1.6/release/ALL-ZIP-1.1.6.dmg)**.
 2. Abra o `.dmg` e arraste o **ALL ZIP** para **Aplicativos**.
 3. Na primeira vez, o macOS pode pedir confirmação por o app ter assinatura *ad hoc* (não notarizada): clique com o botão direito no app e escolha **Abrir**.
 
