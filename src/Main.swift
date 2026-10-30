@@ -12,7 +12,7 @@ struct ArchiveGroup: Identifiable, Equatable {
 }
 
 final class Model: ObservableObject {
- @Published var paneMode=0
+ @Published var paneMode=1
  @Published var lockClosed=false
  @Published var knownTotal=false
  @Published var files: [URL] = []
@@ -226,7 +226,7 @@ final class Delegate:NSObject,NSApplicationDelegate {
   let editItem=NSMenuItem(title:"Editar",action:nil,keyEquivalent:"");editItem.submenu=editMenu;menu.addItem(editItem);NSApp.mainMenu=menu
  }
  func applicationShouldHandleReopen(_ sender:NSApplication,hasVisibleWindows:Bool)->Bool { window.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true);return true }
- @objc func about(){let a=NSAlert();a.messageText="ALL ZIP 1.1.6";a.informativeText="Compactação rápida e extração com libarchive do macOS. Downloads diretos do Google Drive com autorização própria, até dez transferências em paralelo e verificação de integridade.\n\nZIPs independentes são reunidos. Volumes divididos, arquivos com senha e links não têm suporte garantido nesta versão.\n\nVelocidade: bytes processados por segundo; não é uma medição de gravação física no disco.";a.runModal()}
+ @objc func about(){let a=NSAlert();a.messageText="ALL ZIP 1.2.0";a.informativeText="Compactação rápida e extração com libarchive do macOS. Downloads diretos do Google Drive com autorização própria, até dez transferências em paralelo e verificação de integridade.\n\nZIPs independentes são reunidos. Volumes divididos, arquivos com senha e links não têm suporte garantido nesta versão.\n\nVelocidade: bytes processados por segundo; não é uma medição de gravação física no disco.";a.runModal()}
  func application(_ app:NSApplication,open urls:[URL]){model.add(urls);window?.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true)}
  @objc func extractTogether(_ pasteboard:NSPasteboard,userData:String?,error:AutoreleasingUnsafeMutablePointer<NSString?>){let urls=pasteboard.readObjects(forClasses:[NSURL.self],options:[.urlReadingFileURLsOnly:true]) as? [URL] ?? (pasteboard.propertyList(forType:NSPasteboard.PasteboardType("NSFilenamesPboardType")) as? [String] ?? []).map{URL(fileURLWithPath:$0)};if urls.isEmpty{error.pointee="Selecione os arquivos ZIP no Finder.";return};model.lockClosed=false;model.add(urls);window.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true)}
  func applicationShouldTerminate(_ sender:NSApplication)->NSApplication.TerminateReply {if DriveManager.shared.busy{let a=NSAlert();a.messageText="Downloads em andamento";a.informativeText="Conclua ou cancele a fila antes de sair. As pastas só são publicadas ao terminar.";a.runModal();return .terminateCancel};if model.busy{let a=NSAlert();a.messageText="Extração em andamento";a.informativeText="Cancele a extração antes de sair para permitir a limpeza dos arquivos temporários.";a.addButton(withTitle:"Continuar");a.addButton(withTitle:"Cancelar extração");if a.runModal() == .alertSecondButtonReturn{model.cancel()};return .terminateCancel};return .terminateNow}

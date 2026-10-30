@@ -33,10 +33,17 @@ protocol DriveReading {
 final class DriveAPI:DriveReading {
  static let fields="id,name,mimeType,size,md5Checksum,resourceKey,capabilities(canDownload),shortcutDetails(targetId,targetMimeType,targetResourceKey)"
  private var keys:[String:String]=[:]
+ let account:GoogleAccount
+ let auth:GoogleAuthorizing
+ init(account:GoogleAccount=GoogleAccount(id:"default",permissionId:nil,email:"",displayName:""),auth:GoogleAuthorizing=GoogleAuth.shared){
+  self.account=account
+  self.auth=auth
+ }
  func remember(_ file:DriveFile){if let key=file.resourceKey{keys[file.id]=key}}
  func request(_ path:String,query:[String:String]=[:],keyIDs:[String]=[])throws->URLRequest {
   var url=URLComponents(string:"https://www.googleapis.com/drive/v3/"+path)!;url.queryItems=query.map{URLQueryItem(name:$0.key,value:$0.value)}
-  var request=URLRequest(url:url.url!);request.setValue("Bearer "+(try GoogleAuth.shared.accessToken()),forHTTPHeaderField:"Authorization")
+  var request=URLRequest(url:url.url!)
+  request.setValue("Bearer "+(try auth.accessToken(for:account)),forHTTPHeaderField:"Authorization")
   let resources=keyIDs.compactMap{id in keys[id].map{id+"/"+$0}}.joined(separator:",");if !resources.isEmpty{request.setValue(resources,forHTTPHeaderField:"X-Goog-Drive-Resource-Keys")};return request
  }
  func json<T:Decodable>(_ type:T.Type,_ path:String,query:[String:String],keyIDs:[String])throws->T {
@@ -190,6 +197,7 @@ func makeDrivePlan(api:DriveReading,link:DriveLink,control:TransferControl,avail
 }
 final class DriveJob:ObservableObject,Identifiable {
  let id=UUID();let link:DriveLink;let destination:URL;let control=TransferControl()
+ let account:GoogleAccount
  @Published var name="Pasta do Drive"
  @Published var status="Na fila"
  @Published var processed:UInt64=0
@@ -201,17 +209,202 @@ final class DriveJob:ObservableObject,Identifiable {
  @Published var paused=false
  @Published var result:URL?
  @Published var failed=false
- init(link:DriveLink,destination:URL){self.link=link;self.destination=destination}
+ init(link:DriveLink,destination:URL,account:GoogleAccount=GoogleAccount(id:"default",permissionId:nil,email:"",displayName:"")){
+  self.link=link;self.destination=destination;self.account=account
+ }
  var fraction:Double{if result != nil{return 1};guard let total=total,total>0 else{return 0};return min(Double(processed)/Double(total),1)}
 }
 final class DriveManager:ObservableObject {
  static let shared=DriveManager()
- @Published var parallelDownloads:Int=max(1,min(10,UserDefaults.standard.object(forKey:"parallelDownloads") as? Int ?? 10)){didSet{UserDefaults.standard.set(max(1,min(10,parallelDownloads)),forKey:"parallelDownloads")}}
+ let auth:GoogleAuthorizing
+ let defaults:UserDefaults
+ @Published var parallelDownloads:Int {
+  didSet {
+   defaults.set(max(1,min(10,parallelDownloads)),forKey:"parallelDownloads")
+  }
+ }
  @Published var links=""
  @Published var jobs:[DriveJob]=[]
  @Published var status="Cole um ou mais links do Drive."
  @Published var connecting=false
- @Published var connected=GoogleAuth.shared.connected
+ @Published var connected=false
+ @Published var accounts:[GoogleAccount]=[]
+ @Published var activeAccountId:String?
+ @Published var showAccounts=false
+ 
+ var activeAccount:GoogleAccount? {
+  if let id=activeAccountId,let acc=accounts.first(where:{$0.id==id}){return acc}
+  return accounts.first
+ }
+ 
+ init(auth:GoogleAuthorizing=GoogleAuth.shared, defaults:UserDefaults = .standard){
+  self.auth=auth
+  self.defaults=defaults
+  self.parallelDownloads=max(1,min(10,defaults.object(forKey:"parallelDownloads") as? Int ?? 10))
+  loadAccounts()
+  migrateLegacyIfNeeded()
+  updateConnectedState()
+  if let googleAuth=auth as? GoogleAuth {
+   googleAuth.onRevokeAccount={ [weak self] revokedAccount in
+    self?.handleRevocation(of:revokedAccount)
+   }
+  }
+ }
+ 
+ func loadAccounts(){
+  if let data=defaults.data(forKey:"google_accounts_list"),let saved=try? JSONDecoder().decode([GoogleAccount].self,from:data){
+   self.accounts=saved
+   self.activeAccountId=defaults.string(forKey:"google_active_account_id") ?? saved.first?.id
+  }
+ }
+ 
+ func saveAccounts(){
+  if let data=try? JSONEncoder().encode(accounts){
+   defaults.set(data,forKey:"google_accounts_list")
+  }
+  defaults.set(activeAccountId,forKey:"google_active_account_id")
+  updateConnectedState()
+ }
+ 
+ func updateConnectedState(){
+  connected = !accounts.isEmpty && activeAccount != nil
+ }
+ 
+ func migrateLegacyIfNeeded(){
+  guard let googleAuth=auth as? GoogleAuth else{return}
+  guard let legacyData=googleAuth.vault.read("refresh"),!legacyData.isEmpty else{return}
+  if accounts.contains(where:{$0.id=="legacy"}){
+   if googleAuth.vault.read("refresh.legacy")==nil{
+    try? googleAuth.vault.write("refresh.legacy",legacyData)
+   }
+   return
+  }
+  if accounts.isEmpty{
+   let legacyTimestamp = defaults.object(forKey:"google_connected_at") as? Double
+   let legacyAcc=GoogleAccount(id:"legacy",permissionId:nil,email:"",displayName:"Conta principal",photoLink:nil,connectedAt:legacyTimestamp)
+   try? googleAuth.vault.write("refresh.legacy",legacyData)
+   accounts.append(legacyAcc)
+   activeAccountId="legacy"
+   saveAccounts()
+  }
+ }
+ 
+ func refreshAccountMetadata(for account:GoogleAccount){
+  guard let googleAuth=auth as? GoogleAuth else{return}
+  DispatchQueue.global(qos:.utility).async {
+   do {
+    let token=try googleAuth.accessToken(for:account)
+    if let info=try googleAuth.fetchUserInfo(accessToken:token){
+     DispatchQueue.main.async{
+      guard let idx=self.accounts.firstIndex(where:{$0.id==account.id}) else{return}
+      var updated=self.accounts[idx]
+      updated.permissionId=info.permissionId ?? updated.permissionId
+      if let email=info.emailAddress,!email.isEmpty{updated.email=email}
+      if let name=info.displayName,!name.isEmpty{updated.displayName=name}
+      updated.photoLink=info.photoLink ?? updated.photoLink
+      self.accounts[idx]=updated
+      self.saveAccounts()
+     }
+    }
+   }catch{}
+  }
+ }
+ 
+ func registerOrUpdateAccount(_ newAccount:GoogleAccount,refreshToken:String) throws {
+  guard let googleAuth=auth as? GoogleAuth else{
+   throw DriveError.message("Serviço de autenticação indisponível.")
+  }
+  if let idx=accounts.firstIndex(where:{
+   ($0.permissionId != nil && newAccount.permissionId != nil && $0.permissionId==newAccount.permissionId) ||
+   (!$0.email.isEmpty && !newAccount.email.isEmpty && $0.email.lowercased()==newAccount.email.lowercased())
+  }){
+   let existing=accounts[idx]
+   try googleAuth.vault.write("refresh."+existing.id,Data(refreshToken.utf8))
+   var updated=existing
+   updated.permissionId=newAccount.permissionId ?? existing.permissionId
+   if !newAccount.email.isEmpty{updated.email=newAccount.email}
+   if !newAccount.displayName.isEmpty{updated.displayName=newAccount.displayName}
+   updated.photoLink=newAccount.photoLink ?? existing.photoLink
+   if let conn=newAccount.connectedAt{updated.connectedAt=conn}
+   accounts[idx]=updated
+   activeAccountId=existing.id
+  }else{
+   try googleAuth.vault.write("refresh."+newAccount.id,Data(refreshToken.utf8))
+   accounts.append(newAccount)
+   activeAccountId=newAccount.id
+  }
+  saveAccounts()
+ }
+ 
+ func selectAccount(_ account:GoogleAccount){
+  guard accounts.contains(where:{$0.id==account.id}) else{return}
+  activeAccountId=account.id
+  defaults.set(activeAccountId,forKey:"google_active_account_id")
+  status="Novos downloads usarão a conta '\(account.title)'."
+ }
+ 
+ @discardableResult
+ func disconnectAccount(_ account:GoogleAccount) -> Bool {
+  guard !isAccountBusy(account.id) else{
+   status="Finalize ou cancele os downloads da conta '\(account.title)' antes de desconectá-la."
+   return false
+  }
+  auth.disconnect(account:account)
+  if let idx=accounts.firstIndex(where:{$0.id==account.id}){
+   accounts.remove(at:idx)
+  }
+  if activeAccountId==account.id{
+   activeAccountId=accounts.first?.id
+  }
+  saveAccounts()
+  if accounts.isEmpty{
+   status="Conta desconectada deste Mac."
+  }else{
+   status="Conta '\(account.title)' desconectada."
+  }
+  return true
+ }
+ 
+ func disconnect(){
+  if let acc=activeAccount{
+   disconnectAccount(acc)
+  }
+ }
+ 
+ func isAccountBusy(_ accountId:String)->Bool {
+  return jobs.contains{($0.active || $0.status=="Na fila" || ($0.result == nil && !$0.failed)) && $0.account.id==accountId}
+ }
+ 
+ func handleRevocation(of account:GoogleAccount){
+  if let idx=accounts.firstIndex(where:{$0.id==account.id}){
+   accounts.remove(at:idx)
+  }
+  if activeAccountId==account.id{
+   activeAccountId=accounts.first?.id
+  }
+  saveAccounts()
+  status="A autorização da conta '\(account.title)' expirou ou foi cancelada no Google. Conecte novamente."
+ }
+ 
+ var isProduction:Bool {defaults.object(forKey:"google_oauth_mode") as? String != "testing"}
+ var connectionBadgeText:String? {
+  guard connected,let active=activeAccount else{return nil}
+  if isProduction {return "● Conectada (Ilimitado)"}
+  let timestamp=active.connectedAt ?? defaults.object(forKey:"google_connected_at") as? Double ?? 0
+  guard timestamp>0 else{return "● Conectada"}
+  let elapsed=Calendar.current.dateComponents([.day],from:Date(timeIntervalSince1970:timestamp),to:Date()).day ?? 0
+  let remaining=max(0,7-elapsed)
+  if remaining>1{return "\(remaining) dias restantes"}
+  if remaining==1{return "1 dia restante"}
+  return "Expira hoje"
+ }
+ var isExpiringSoon:Bool {
+  guard !isProduction,let active=activeAccount else{return false}
+  let timestamp=active.connectedAt ?? defaults.object(forKey:"google_connected_at") as? Double ?? 0
+  guard timestamp>0 else{return false}
+  let elapsed=Calendar.current.dateComponents([.day],from:Date(timeIntervalSince1970:timestamp),to:Date()).day ?? 0
+  return (7-elapsed)<=1
+ }
  private let serial=DispatchQueue(label:"ALLZIP.drive.queue",qos:.userInitiated)
  var busy:Bool{jobs.contains{$0.active} || jobs.contains{$0.status=="Na fila"} || connecting}
  func connect(){
@@ -221,16 +414,33 @@ final class DriveManager:ObservableObject {
    switch alert.runModal(){case .alertFirstButtonReturn:let panel=NSOpenPanel();panel.allowedContentTypes=[.json];panel.canChooseDirectories=false;if panel.runModal() == .OK,let url=panel.url{do{try GoogleAuth.shared.importClient(url)}catch{status=error.localizedDescription;return}}else{return};case .alertSecondButtonReturn:NSWorkspace.shared.open(URL(string:"https://console.cloud.google.com/apis/credentials")!);status="Configuração do desenvolvedor pendente no Google Cloud.";return;default:return}
   }
   connecting=true;status="Autorize a conexão no navegador…"
-  DispatchQueue.global(qos:.userInitiated).async {do{try GoogleAuth.shared.connect();DispatchQueue.main.async {self.connecting=false;self.connected=true;self.status="Conta Google conectada."}}catch{DispatchQueue.main.async{self.connecting=false;self.status=error.localizedDescription}}}
+  DispatchQueue.global(qos:.userInitiated).async {
+   do {
+    let result=try GoogleAuth.shared.connect()
+    DispatchQueue.main.async{
+     self.connecting=false
+     do {
+      try self.registerOrUpdateAccount(result.account,refreshToken:result.refreshToken)
+      self.status="Conta '\(self.activeAccount?.title ?? "Google")' conectada."
+     } catch {
+      self.status="Falha ao gravar credenciais: \(error.localizedDescription)"
+     }
+    }
+   } catch {
+    DispatchQueue.main.async{
+     self.connecting=false
+     self.status=error.localizedDescription
+    }
+   }
+  }
  }
  func cancelConnection(){GoogleAuth.shared.cancelConnection();status="Cancelando conexão…"}
- func disconnect(){guard !busy else{status="Finalize ou cancele os downloads antes de desconectar.";return};GoogleAuth.shared.disconnect();connected=false;status="Conta desconectada deste Mac."}
  func enqueue(destination:URL){
-  guard connected else{status="Conecte sua conta Google antes de adicionar links.";return}
+  guard connected,let account=activeAccount else{status="Conecte sua conta Google antes de adicionar links.";return}
   do {
    let parsed=try links.split(whereSeparator:{$0.isWhitespace}).map{try DriveLink.parse(String($0))};guard !parsed.isEmpty else{throw DriveError.message("Cole pelo menos um link do Drive.")}
    var unique:[DriveLink]=[];for link in parsed{if !unique.contains(link){unique.append(link)}}
-   for link in unique {let job=DriveJob(link:link,destination:destination);jobs.append(job);let parallel=max(1,min(10,parallelDownloads));serial.async{self.run(job,parallel:parallel)}}
+   for link in unique {let job=DriveJob(link:link,destination:destination,account:account);jobs.append(job);let parallel=max(1,min(10,parallelDownloads));serial.async{self.run(job,parallel:parallel)}}
    links="";status="Downloads adicionados."
   }catch{status=error.localizedDescription}
  }
@@ -248,7 +458,7 @@ final class DriveManager:ObservableObject {
    try job.control.check()
    let initialAttrs=try fm.attributesOfFileSystem(forPath:job.destination.path)
    let initialFree=(initialAttrs[.systemFreeSize] as? NSNumber)?.uint64Value ?? 0
-   let api=DriveAPI()
+   let api=DriveAPI(account:job.account,auth:self.auth)
    let plan=try makeDrivePlan(api:api,link:job.link,control:job.control,availableBytes:initialFree,onProgress:{prog in
     resolvedName=prog.name
     DispatchQueue.main.async{
@@ -301,7 +511,7 @@ final class DriveManager:ObservableObject {
          DispatchQueue.main.async{job.processed=bytes;job.total=total;job.speed=rate}
         };stateLock.unlock()
        }
-       do{var retryRequest=request;retryRequest.setValue("Bearer "+(try GoogleAuth.shared.accessToken()),forHTTPHeaderField:"Authorization");try transfer.download(retryRequest);succeeded=true;break}catch{try job.control.check();if attempt==2{throw error};Thread.sleep(forTimeInterval:Double(attempt+1))}
+       do{var retryRequest=request;retryRequest.setValue("Bearer "+(try self.auth.accessToken(for:job.account)),forHTTPHeaderField:"Authorization");try transfer.download(retryRequest);succeeded=true;break}catch{try job.control.check();if attempt==2{throw error};Thread.sleep(forTimeInterval:Double(attempt+1))}
       }
       guard succeeded else{throw DriveError.message("Não foi possível concluir a transferência.")}
       if !item.exported,let expectedMD5=item.file.md5Checksum {

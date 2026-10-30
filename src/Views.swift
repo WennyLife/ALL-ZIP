@@ -8,7 +8,7 @@ struct Content:View {
  var body:some View {
   VStack(alignment:.leading,spacing:16){
    HStack{Text("ALL ZIP").font(.system(size:16,weight:.medium));Spacer();Toggle("Sons",isOn:$model.sounds).toggleStyle(.checkbox).font(.system(size:12)).onChange(of:model.sounds){_,value in UserDefaults.standard.set(value,forKey:"sounds")};Button{model.lockClosed.toggle();model.result=nil;model.files=[];model.groups=[];model.status=model.lockClosed ? "Arraste arquivos ou pastas para compactar.":"Arraste seus ZIPs para descompactar."}label:{Label(model.lockClosed ? "Compactar":"Descompactar",systemImage:model.lockClosed ? "lock.fill":"lock.open")}.disabled(model.busy).help(model.lockClosed ? "Cadeado fechado: compactar":"Cadeado aberto: descompactar")}
-   Picker("Modo",selection:$model.paneMode){Text("Arquivos ZIP").tag(0);Text("Baixar do Drive").tag(1)}.pickerStyle(.segmented)
+   Picker("Modo",selection:$model.paneMode){Text("Baixar do Drive").tag(1);Text("Arquivos ZIP").tag(0)}.pickerStyle(.segmented)
    if model.paneMode==0{ArchivePane(model:model)}else{DrivePane(model:model,drive:drive)}
   }.padding(24).frame(width:580).background(Color(nsColor:.windowBackgroundColor))
    .onDrop(of:[UTType.fileURL.identifier],isTargeted:nil){providers in
@@ -72,14 +72,81 @@ struct DrivePane:View {
    Text("Baixar do Google Drive").font(.system(size:18,weight:.medium))
    Text("Cole os links recebidos no WhatsApp. Um link por linha.").font(.system(size:12)).foregroundStyle(.secondary)
    TextEditor(text:$drive.links).font(.system(size:12)).frame(height:65).padding(5).scrollContentBackground(.hidden).background(Color(nsColor:.textBackgroundColor)).cornerRadius(5).overlay(alignment:.topLeading){if drive.links.isEmpty{Text("Cole aqui os links do Google Drive…").font(.system(size:12)).foregroundStyle(.secondary).padding(10).allowsHitTesting(false)}}.overlay(RoundedRectangle(cornerRadius:5).stroke(Color(nsColor:.separatorColor),lineWidth:1))
-   HStack{Text(drive.connected ? "Conta Google conectada":"Conta Google não conectada").font(.system(size:12)).foregroundStyle(.secondary);Spacer();Button(drive.connecting ? "Cancelar conexão":drive.connected ? "Desconectar":"Conectar Google…"){if drive.connecting{drive.cancelConnection()}else if drive.connected{drive.disconnect()}else{drive.connect()}}}
+   HStack{
+    if drive.connected,let account=drive.activeAccount {
+     HStack(spacing:6){
+      Text(account.title).font(.system(size:12,weight:.medium)).lineLimit(1).help(account.email)
+      if let badge=drive.connectionBadgeText{
+       let color:Color=drive.isProduction ? .green:drive.isExpiringSoon ? .red:.blue
+       Text(badge).font(.system(size:10,weight:.medium)).padding(.horizontal,6).padding(.vertical,2).background(color.opacity(0.15)).foregroundColor(color).cornerRadius(4)
+      }
+     }
+     Spacer()
+     Button(drive.connecting ? "Cancelar conexão":"Contas (\(drive.accounts.count)) ▾"){
+      if drive.connecting{drive.cancelConnection()}else{drive.showAccounts.toggle()}
+     }
+     .popover(isPresented:$drive.showAccounts,arrowEdge:.bottom){
+      AccountsPopoverView(drive:drive)
+     }
+    } else {
+     Text("Conta Google não conectada").font(.system(size:12)).foregroundStyle(.secondary)
+     Spacer()
+     Button(drive.connecting ? "Cancelar conexão":"Conectar Google…"){
+      if drive.connecting{drive.cancelConnection()}else{drive.connect()}
+     }
+    }
+   }
    HStack{Text("Salvar em: \(model.destination.lastPathComponent)");Spacer();Button("Alterar…"){model.chooseDestination()}}
    HStack{Text("Transferências simultâneas");Spacer();Picker("Transferências simultâneas",selection:$drive.parallelDownloads){ForEach(1...10,id:\.self){count in Text("\(count)").tag(count)}}.labelsHidden().frame(width:65)}
    if !drive.jobs.isEmpty{HStack{Text("Downloads").font(.system(size:12,weight:.medium));Spacer();Button{drive.clearCompleted()}label:{Label("Limpar baixados",systemImage:"arrow.uturn.backward")}.help("Remove os downloads concluídos desta lista. Os arquivos são mantidos.").disabled(!drive.jobs.contains{$0.result != nil})};ScrollView{VStack(spacing:10){ForEach(drive.jobs){job in DriveJobRow(job:job,drive:drive)}}}.frame(maxHeight:max(80,min(230,(NSScreen.main?.visibleFrame.height ?? 900)-600)))}
    Text(drive.status).font(.system(size:12)).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
    Divider()
    HStack{Text("Download direto · sem ZIP intermediário").font(.system(size:11)).foregroundStyle(.secondary);Spacer();Button("Baixar"){drive.enqueue(destination:model.destination)}.keyboardShortcut(.defaultAction).disabled(drive.links.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty || !drive.connected)}
+  }.onAppear{
+   for account in drive.accounts where account.permissionId == nil || account.email.isEmpty { drive.refreshAccountMetadata(for:account) }
   }
+ }
+}
+struct AccountsPopoverView:View {
+ @ObservedObject var drive:DriveManager
+ var body:some View {
+  VStack(alignment:.leading,spacing:8){
+   Text("CONTAS DO GOOGLE DRIVE").font(.system(size:10,weight:.bold)).foregroundStyle(.secondary).padding(.horizontal,4).padding(.top,4)
+   Divider()
+   ScrollView{VStack(spacing:4){
+    ForEach(drive.accounts){acc in
+     let isActive=acc.id==drive.activeAccountId
+     HStack(spacing:10){
+      Circle().fill(Color.accentColor.opacity(0.8)).frame(width:28,height:28).overlay(Text(acc.initial).font(.system(size:12,weight:.bold)).foregroundColor(.white))
+      Button{
+       drive.selectAccount(acc)
+       drive.showAccounts=false
+      }label:{
+       VStack(alignment:.leading,spacing:2){
+        Text(acc.title).font(.system(size:12,weight:.medium)).foregroundColor(.primary).lineLimit(1)
+        Text(acc.email.isEmpty ? (isActive ? "Selecionada para novos downloads":"Conta conectada"):acc.email).font(.system(size:10)).foregroundStyle(isActive ? Color.accentColor:Color.secondary).lineLimit(1)
+       }.frame(maxWidth:.infinity,alignment:.leading)
+      }.buttonStyle(.plain)
+      if isActive{
+       Image(systemName:"checkmark").font(.system(size:11,weight:.bold)).foregroundColor(.accentColor)
+      }
+      Button{
+       drive.disconnectAccount(acc)
+       if drive.accounts.isEmpty{drive.showAccounts=false}
+      }label:{
+       Image(systemName:"xmark.circle").font(.system(size:13)).foregroundColor(.secondary)
+      }.buttonStyle(.plain).help("Desconectar esta conta")
+     }.padding(.vertical,4).padding(.horizontal,6).background(isActive ? Color.accentColor.opacity(0.08):Color.clear).cornerRadius(6)
+    }
+   }}.frame(height:min(CGFloat(max(drive.accounts.count,1))*48,288))
+   Divider()
+   Button{
+    drive.showAccounts=false
+    drive.connect()
+   }label:{
+    HStack{Image(systemName:"plus");Text("Adicionar conta Google…")}.font(.system(size:12)).foregroundColor(.accentColor).padding(.vertical,4).padding(.horizontal,6)
+   }.buttonStyle(.plain)
+  }.padding(10).frame(width:290)
  }
 }
 struct DriveJobRow:View {
@@ -90,7 +157,7 @@ struct DriveJobRow:View {
    HStack{Image(systemName:job.result != nil ? "checkmark.circle":"folder").foregroundStyle(.secondary);Text(job.name).lineLimit(1);Spacer();if let result=job.result{Button("Mostrar"){NSWorkspace.shared.activateFileViewerSelecting([result])}}else if job.active{Button(job.paused ? "Retomar":"Pausar"){drive.pause(job)};Button{drive.cancel(job)}label:{Image(systemName:"xmark")}.help("Cancelar download")}else if job.status=="Na fila"{Button("Cancelar"){drive.cancel(job)}}}
    if job.total != nil || job.result != nil{ShimmerProgress(value:job.fraction,active:job.active && !job.paused)}else if job.active{ProgressView().progressViewStyle(.linear)}
    HStack{if job.total != nil{Text("\(Int(job.fraction*100))%").fontWeight(.medium)};Text(job.total.map{Model.bytes(job.processed)+" / "+Model.bytes($0)} ?? Model.bytes(job.processed));Spacer();if job.active && !job.paused{Text(String(format:"%.1f MB/s",job.speed/1_000_000)).monospacedDigit();if let total=job.total,job.speed>0,job.processed<total{let seconds=Double(total-job.processed)/job.speed;Text(seconds<60 ? "~\(Int(seconds)) s":"~\(Int(seconds/60)) min")}}}.font(.system(size:12)).foregroundStyle(.secondary)
-   Text(job.status+(job.count>0 ? " · \(job.doneCount)/\(job.count) arquivos":"")).font(.system(size:11)).foregroundStyle(job.failed ? .red:.secondary).fixedSize(horizontal:false,vertical:true)
+   Text(job.status+(job.count>0 ? " · \(job.doneCount)/\(job.count) arquivos":"")+" · "+job.account.title).font(.system(size:11)).foregroundStyle(job.failed ? .red:.secondary).fixedSize(horizontal:false,vertical:true)
   }.padding(12).background(Color(nsColor:.textBackgroundColor)).cornerRadius(7)
  }
 }

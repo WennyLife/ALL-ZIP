@@ -43,7 +43,27 @@ print("APROVADO: links e nomes seguros")
 let client=try GoogleAuth.parseClient(Data("{\"installed\":{\"client_id\":\"example.apps.googleusercontent.com\"}}".utf8))
 assert(client.client_id=="example.apps.googleusercontent.com")
 do{_ = try GoogleAuth.parseClient(Data("{\"web\":{\"client_id\":\"x\"}}".utf8));fatalError("Aceitou OAuth web")}catch{}
-print("APROVADO: validação da configuração OAuth Desktop")
+var revoked=false
+GoogleAuth.shared.onRevoke={revoked=true}
+GoogleAuth.shared.onRevoke?()
+assert(revoked)
+GoogleAuth.shared.vault=MemoryVaultStorage()
+let isolatedSuite="ALLZIP-network-test-"+UUID().uuidString
+let testDefaults=UserDefaults(suiteName:isolatedSuite)!
+defer{testDefaults.removePersistentDomain(forName:isolatedSuite)}
+let dm=DriveManager(defaults:testDefaults)
+dm.accounts=[GoogleAccount(id:"test",permissionId:nil,email:"test@test.com",displayName:"Test",connectedAt:Date().timeIntervalSince1970)]
+dm.activeAccountId="test"
+dm.updateConnectedState()
+if dm.connected {
+ assert(dm.connectionBadgeText=="● Conectada (Ilimitado)")
+ testDefaults.set("testing",forKey:"google_oauth_mode")
+ testDefaults.set(Date().timeIntervalSince1970,forKey:"google_connected_at")
+ assert(dm.connectionBadgeText?.contains("dias restantes") == true)
+ testDefaults.removeObject(forKey:"google_oauth_mode")
+ testDefaults.removeObject(forKey:"google_connected_at")
+}
+print("APROVADO: validação da configuração OAuth Desktop, badges de status (ilimitado e 7 dias) e auto-desconexão")
 final class FakeDrive:DriveReading {
  var files:[String:DriveFile]=[:]
  var contents:[String:[DriveFile]]=[:]

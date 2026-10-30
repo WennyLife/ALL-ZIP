@@ -15,7 +15,7 @@
 
 **Arraste seus ZIPs e o ALL ZIP descompacta ou compacta na hora. Cole links do Google Drive e ele baixa arquivos e pastas inteiras, com progresso real, pausa e retomada!**
 
-[Download macOS (.dmg)](https://github.com/WennyLife/ALL-ZIP/raw/refs/tags/v1.1.6/release/ALL-ZIP-1.1.6.dmg) • [Download (.zip)](https://github.com/WennyLife/ALL-ZIP/raw/refs/tags/v1.1.6/release/ALL-ZIP-1.1.6.zip)
+[Download macOS (.dmg)](https://github.com/WennyLife/ALL-ZIP/raw/refs/tags/v1.2.0/release/ALL-ZIP-1.2.0.dmg) • [Download (.zip)](https://github.com/WennyLife/ALL-ZIP/raw/refs/tags/v1.2.0/release/ALL-ZIP-1.2.0.zip)
 
 </div>
 
@@ -30,6 +30,7 @@ O **ALL ZIP** é um app nativo para macOS com duas funções:
 
 ## ✨ Principais funcionalidades
 
+* 👤 **Várias contas do Google Drive:** conecte seus e-mails pelo botão **Contas**, selecione a conta para novos downloads e desconecte cada uma separadamente. Downloads na fila continuam usando a conta de origem. A conexão existente é preservada ao atualizar.
 * 📂 **Separação automática de pastas (1.1.6):** ao arrastar muitos ZIPs de pastas diferentes (por exemplo, downloads divididos do Drive), o app limpa sufixos técnicos (`-001`, `_part1` etc.), agrupa pelo nome da pasta e extrai cada uma em separado.
 * ⚡ **Compactação rápida:** DEFLATE nível 1, priorizando velocidade.
 * 📊 **Progresso real:** barras com porcentagem, bytes e velocidade. Enquanto o total não é conhecido, mostra "Preparando", sem inventar porcentagem.
@@ -56,7 +57,7 @@ flowchart LR
 
 ## 📥 Instalação
 
-1. Baixe **[`ALL-ZIP-1.1.6.dmg`](https://github.com/WennyLife/ALL-ZIP/raw/refs/tags/v1.1.6/release/ALL-ZIP-1.1.6.dmg)**.
+1. Baixe **[`ALL-ZIP-1.2.0.dmg`](https://github.com/WennyLife/ALL-ZIP/raw/refs/tags/v1.2.0/release/ALL-ZIP-1.2.0.dmg)**.
 2. Abra o `.dmg` e arraste o **ALL ZIP** para **Aplicativos**.
 3. Na primeira vez, o macOS pode pedir confirmação por o app ter assinatura *ad hoc* (não notarizada): clique com o botão direito no app e escolha **Abrir**.
 
@@ -105,3 +106,9 @@ Este projeto é distribuído sob os termos da licença **MIT**. Consulte o arqui
 <div align="center">
 Desenvolvido com carinho por <a href="https://github.com/WennyLife"><strong>WennyLife</strong></a>
 </div>
+
+## Atualização 1.2.0
+
+Várias contas Google, lista de contas com e-mail, seleção para novos downloads e desvinculação individual. A aba Baixar do Drive aparece primeiro. A conexão antiga é migrada no Mac sem exigir nova autorização.
+
+Validação:13 testes de contas e18 de rede aprovados com dados simulados; teste de fila confirma a conta de origem após alternar a seleção. Build e assinaturas conferidos, DMG montado e ZIP extraído. Conta existente e fluxo de adicionar/cancelar conferidos no app instalado. Não foi autorizada uma segunda conta real nem realizado novo download completo do Google nesta atualização.
