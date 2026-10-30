@@ -19,6 +19,8 @@ final class Model: ObservableObject {
  @Published var groups: [ArchiveGroup] = []
  @Published var folder = "Arquivos reunidos"
  @Published var destination = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]
+ @Published var driveDestination = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]
+ var destinationWasChosen=false
  @Published var policy = "ask"
  @Published var sounds = UserDefaults.standard.object(forKey: "sounds") as? Bool ?? true
  @Published var busy = false
@@ -77,6 +79,8 @@ final class Model: ObservableObject {
  }
  func add(_ urls:[URL]) {
   if busy { pending += urls; status="Operação em andamento. Novos arquivos aguardam a próxima operação."; return }
+  if result != nil { files=[];groups=[] }
+  if files.isEmpty,!lockClosed,!destinationWasChosen,let first=urls.first { destination=first.deletingLastPathComponent() }
   for u in urls { if !files.contains(u) { files.append(u) } }
   result=nil
   if lockClosed {
@@ -94,7 +98,8 @@ final class Model: ObservableObject {
    }
   }
  }
- func chooseDestination() { let p=NSOpenPanel(); p.canChooseDirectories=true;p.canChooseFiles=false;p.canCreateDirectories=true;p.directoryURL=destination;if p.runModal() == .OK,let u=p.url{destination=u} }
+ func setDestination(_ url:URL) { if paneMode==1 { driveDestination=url } else { destination=url;destinationWasChosen=true } }
+ func chooseDestination() { let p=NSOpenPanel(); p.canChooseDirectories=true;p.canChooseFiles=false;p.canCreateDirectories=true;p.directoryURL=paneMode==1 ? driveDestination:destination;if p.runModal() == .OK,let u=p.url{setDestination(u)} }
  func cancel() { lock.lock();cancelled=true;process?.terminate();lock.unlock();status="Cancelando e removendo os arquivos temporários…" }
  func checkCancellation() throws {lock.lock();let c=cancelled;lock.unlock();if c{throw JobFailure(message:"Extração cancelada. Os ZIPs originais foram preservados.")}}
  func run(_ args:[String], line:@escaping(String)throws->Void) throws {
@@ -115,6 +120,7 @@ final class Model: ObservableObject {
  }
  func begin() {
   guard !busy,!files.isEmpty else{return}
+  destinationWasChosen=false
   let target=destination, chosenPolicy=policy
   let currentGroups = groups.isEmpty ? Self.groupURLs(files) : groups
   guard !currentGroups.isEmpty else{return}
@@ -226,7 +232,7 @@ final class Delegate:NSObject,NSApplicationDelegate {
   let editItem=NSMenuItem(title:"Editar",action:nil,keyEquivalent:"");editItem.submenu=editMenu;menu.addItem(editItem);NSApp.mainMenu=menu
  }
  func applicationShouldHandleReopen(_ sender:NSApplication,hasVisibleWindows:Bool)->Bool { window.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true);return true }
- @objc func about(){let a=NSAlert();a.messageText="ALL ZIP 1.2.0";a.informativeText="Compactação rápida e extração com libarchive do macOS. Downloads diretos do Google Drive com autorização própria, até dez transferências em paralelo e verificação de integridade.\n\nZIPs independentes são reunidos. Volumes divididos, arquivos com senha e links não têm suporte garantido nesta versão.\n\nVelocidade: bytes processados por segundo; não é uma medição de gravação física no disco.";a.runModal()}
+ @objc func about(){let a=NSAlert();a.messageText="ALL ZIP 1.2.1";a.informativeText="Compactação rápida e extração com libarchive do macOS. Downloads diretos do Google Drive com autorização própria, até dez transferências em paralelo e verificação de integridade.\n\nZIPs independentes são reunidos. Volumes divididos, arquivos com senha e links não têm suporte garantido nesta versão.\n\nVelocidade: bytes processados por segundo; não é uma medição de gravação física no disco.";a.runModal()}
  func application(_ app:NSApplication,open urls:[URL]){model.add(urls);window?.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true)}
  @objc func extractTogether(_ pasteboard:NSPasteboard,userData:String?,error:AutoreleasingUnsafeMutablePointer<NSString?>){let urls=pasteboard.readObjects(forClasses:[NSURL.self],options:[.urlReadingFileURLsOnly:true]) as? [URL] ?? (pasteboard.propertyList(forType:NSPasteboard.PasteboardType("NSFilenamesPboardType")) as? [String] ?? []).map{URL(fileURLWithPath:$0)};if urls.isEmpty{error.pointee="Selecione os arquivos ZIP no Finder.";return};model.lockClosed=false;model.add(urls);window.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true)}
  func applicationShouldTerminate(_ sender:NSApplication)->NSApplication.TerminateReply {if DriveManager.shared.busy{let a=NSAlert();a.messageText="Downloads em andamento";a.informativeText="Conclua ou cancele a fila antes de sair. As pastas só são publicadas ao terminar.";a.runModal();return .terminateCancel};if model.busy{let a=NSAlert();a.messageText="Extração em andamento";a.informativeText="Cancele a extração antes de sair para permitir a limpeza dos arquivos temporários.";a.addButton(withTitle:"Continuar");a.addButton(withTitle:"Cancelar extração");if a.runModal() == .alertSecondButtonReturn{model.cancel()};return .terminateCancel};return .terminateNow}

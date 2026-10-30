@@ -10,7 +10,7 @@ subprocess.run(['swiftc','-O','-swift-version','5',str(ROOT/'Main.swift'),str(RO
 shutil.copy2(CONTENTS/'MacOS'/'JuntaZIPEngine',ROOT/'JuntaZIPEngine')
 info={
  'CFBundleIdentifier':'com.lendaii.juntazip','CFBundleName':'ALL ZIP','CFBundleDisplayName':'ALL ZIP',
- 'CFBundleExecutable':'JuntaZIP','CFBundlePackageType':'APPL','CFBundleShortVersionString':'1.2.0','CFBundleVersion':'12',
+ 'CFBundleExecutable':'JuntaZIP','CFBundlePackageType':'APPL','CFBundleShortVersionString':'1.2.1','CFBundleVersion':'13',
  'LSMinimumSystemVersion':'26.0','NSHighResolutionCapable':True,'CFBundleIconFile':'JuntaZIP',
  'CFBundleDocumentTypes':[{'CFBundleTypeName':'Arquivos ZIP','CFBundleTypeRole':'Viewer','LSHandlerRank':'Alternate','LSItemContentTypes':['public.zip-archive','com.pkware.zip-archive']}],
  'NSServices':[{'NSMenuItem':{'default':'Extrair juntos com ALL ZIP'},'NSMessage':'extractTogether','NSPortName':'ALL ZIP','NSSendTypes':['NSFilenamesPboardType','public.file-url'],'NSRequiredContext':{'NSTextContent':'FilePath'}}]

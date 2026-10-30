@@ -27,7 +27,7 @@ struct ArchivePane:View {
     VStack(spacing:12){Image(systemName:model.lockClosed ? "doc.zipper":"folder.badge.plus").font(.system(size:32)).foregroundStyle(.secondary);Text(model.lockClosed ? "Arraste arquivos ou pastas aqui":"Arraste seus arquivos ZIP aqui");Text("A operação começa ao soltar os arquivos.").font(.system(size:11)).foregroundStyle(.secondary);Button("Selecionar arquivos…"){model.pick()}}
      .frame(maxWidth:.infinity,minHeight:130).background(Color(nsColor:.textBackgroundColor)).cornerRadius(7)
    } else {
-    HStack{Image(systemName:"doc.zipper").foregroundStyle(.secondary);VStack(alignment:.leading,spacing:4){Text("\(model.files.count) item(ns) selecionado(s)" + (!model.lockClosed && model.groups.count > 1 ? " · \(model.groups.count) pastas identificadas" : ""));Text(model.files.prefix(2).map(\.lastPathComponent).joined(separator:"\n")).font(.system(size:11)).foregroundStyle(.secondary).lineLimit(2)};Spacer();Button("Adicionar…"){model.pick()}.disabled(model.busy);Button{model.files=[];model.groups=[];model.result=nil;model.status="Selecione os arquivos."}label:{Image(systemName:"xmark")}.help("Limpar seleção").disabled(model.busy)}.padding(12).background(Color(nsColor:.textBackgroundColor)).cornerRadius(7)
+    HStack{Image(systemName:"doc.zipper").foregroundStyle(.secondary);VStack(alignment:.leading,spacing:4){Text("\(model.files.count) item(ns) selecionado(s)" + (!model.lockClosed && model.groups.count > 1 ? " · \(model.groups.count) pastas identificadas" : ""));Text(model.files.prefix(2).map(\.lastPathComponent).joined(separator:"\n")).font(.system(size:11)).foregroundStyle(.secondary).lineLimit(2)};Spacer();Button("Adicionar…"){model.pick()}.disabled(model.busy);Button{model.files=[];model.groups=[];model.result=nil;model.destinationWasChosen=false;model.status="Selecione os arquivos."}label:{Image(systemName:"xmark")}.help("Limpar seleção").disabled(model.busy)}.padding(12).background(Color(nsColor:.textBackgroundColor)).cornerRadius(7)
    }
    if !model.lockClosed && model.groups.count > 1 {
     VStack(alignment:.leading,spacing:6){
@@ -50,7 +50,7 @@ struct ArchivePane:View {
    } else {
     HStack{Text(model.lockClosed ? "Nome do ZIP:":"Pasta final:").frame(width:86,alignment:.trailing);TextField("Nome",text:$model.folder)}.disabled(model.busy)
    }
-   HStack{Text("Salvar em:").frame(width:86,alignment:.trailing);Text(model.destination.lastPathComponent).lineLimit(1);Spacer();Button("Alterar…"){model.chooseDestination()}.disabled(model.busy)}
+   HStack{Text("Salvar em:").frame(width:86,alignment:.trailing);Text(model.destination.lastPathComponent).lineLimit(1).help(model.destination.path);Spacer();Button("Alterar…"){model.chooseDestination()}.disabled(model.busy)}
    if !model.lockClosed{HStack{Text("Repetidos:").frame(width:86,alignment:.trailing);Picker("",selection:$model.policy){Text("Perguntar antes").tag("ask");Text("Manter os dois").tag("both");Text("Preservar o primeiro").tag("skip")}.labelsHidden()}.disabled(model.busy)}
    VStack(alignment:.leading,spacing:7){
     if model.busy || model.result != nil {
@@ -96,12 +96,12 @@ struct DrivePane:View {
      }
     }
    }
-   HStack{Text("Salvar em: \(model.destination.lastPathComponent)");Spacer();Button("Alterar…"){model.chooseDestination()}}
+   HStack{Text("Salvar em: \(model.driveDestination.lastPathComponent)");Spacer();Button("Alterar…"){model.chooseDestination()}}
    HStack{Text("Transferências simultâneas");Spacer();Picker("Transferências simultâneas",selection:$drive.parallelDownloads){ForEach(1...10,id:\.self){count in Text("\(count)").tag(count)}}.labelsHidden().frame(width:65)}
    if !drive.jobs.isEmpty{HStack{Text("Downloads").font(.system(size:12,weight:.medium));Spacer();Button{drive.clearCompleted()}label:{Label("Limpar baixados",systemImage:"arrow.uturn.backward")}.help("Remove os downloads concluídos desta lista. Os arquivos são mantidos.").disabled(!drive.jobs.contains{$0.result != nil})};ScrollView{VStack(spacing:10){ForEach(drive.jobs){job in DriveJobRow(job:job,drive:drive)}}}.frame(maxHeight:max(80,min(230,(NSScreen.main?.visibleFrame.height ?? 900)-600)))}
    Text(drive.status).font(.system(size:12)).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
    Divider()
-   HStack{Text("Download direto · sem ZIP intermediário").font(.system(size:11)).foregroundStyle(.secondary);Spacer();Button("Baixar"){drive.enqueue(destination:model.destination)}.keyboardShortcut(.defaultAction).disabled(drive.links.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty || !drive.connected)}
+   HStack{Text("Download direto · sem ZIP intermediário").font(.system(size:11)).foregroundStyle(.secondary);Spacer();Button("Baixar"){drive.enqueue(destination:model.driveDestination)}.keyboardShortcut(.defaultAction).disabled(drive.links.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty || !drive.connected)}
   }.onAppear{
    for account in drive.accounts where account.permissionId == nil || account.email.isEmpty { drive.refreshAccountMetadata(for:account) }
   }

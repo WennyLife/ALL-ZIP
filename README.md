@@ -15,7 +15,7 @@
 
 **Arraste seus ZIPs e o ALL ZIP descompacta ou compacta na hora. Cole links do Google Drive e ele baixa arquivos e pastas inteiras, com progresso real, pausa e retomada!**
 
-[Download macOS (.dmg)](https://github.com/WennyLife/ALL-ZIP/raw/refs/tags/v1.2.0/release/ALL-ZIP-1.2.0.dmg) • [Download (.zip)](https://github.com/WennyLife/ALL-ZIP/raw/refs/tags/v1.2.0/release/ALL-ZIP-1.2.0.zip)
+[Download macOS (.dmg)](https://github.com/WennyLife/ALL-ZIP/raw/refs/tags/v1.2.1/release/ALL-ZIP-1.2.1.dmg) • [Download (.zip)](https://github.com/WennyLife/ALL-ZIP/raw/refs/tags/v1.2.1/release/ALL-ZIP-1.2.1.zip)
 
 </div>
 
@@ -57,7 +57,7 @@ flowchart LR
 
 ## 📥 Instalação
 
-1. Baixe **[`ALL-ZIP-1.2.0.dmg`](https://github.com/WennyLife/ALL-ZIP/raw/refs/tags/v1.2.0/release/ALL-ZIP-1.2.0.dmg)**.
+1. Baixe **[`ALL-ZIP-1.2.0.dmg`](https://github.com/WennyLife/ALL-ZIP/raw/refs/tags/v1.2.1/release/ALL-ZIP-1.2.1.dmg)**.
 2. Abra o `.dmg` e arraste o **ALL ZIP** para **Aplicativos**.
 3. Na primeira vez, o macOS pode pedir confirmação por o app ter assinatura *ad hoc* (não notarizada): clique com o botão direito no app e escolha **Abrir**.
 
@@ -112,3 +112,7 @@ Desenvolvido com carinho por <a href="https://github.com/WennyLife"><strong>Wenn
 Várias contas Google, lista de contas com e-mail, seleção para novos downloads e desvinculação individual. A aba Baixar do Drive aparece primeiro. A conexão antiga é migrada no Mac sem exigir nova autorização.
 
 Validação:13 testes de contas e18 de rede aprovados com dados simulados; teste de fila confirma a conta de origem após alternar a seleção. Build e assinaturas conferidos, DMG montado e ZIP extraído. Conta existente e fluxo de adicionar/cancelar conferidos no app instalado. Não foi autorizada uma segunda conta real nem realizado novo download completo do Google nesta atualização.
+
+## Atualização 1.2.1
+
+Ao abrir ZIPs pelo Finder ou arrastá-los, a extração usa a pasta do primeiro ZIP como destino padrão. Alterar… permite escolher outro destino. A próxima extração volta a usar a origem; downloads do Drive mantêm destino independente. Selecionar novos ZIPs após concluir inicia uma seleção nova. Teste com extração real na origem e no destino manual aprovado;13 testes de contas e18 de rede também aprovados.

@@ -1,7 +1,7 @@
 import Foundation
 import AppKit
 extension Model {
- func beginOperation(){if lockClosed{beginCompression()}else{begin()}}
+ func beginOperation(){if lockClosed{beginCompression()}else{begin()};destinationWasChosen=false}
  func beginCompression(){
   guard !busy,!files.isEmpty else{return}
   let name=folder.trimmingCharacters(in:.whitespacesAndNewlines)
